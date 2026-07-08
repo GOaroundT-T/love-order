@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git ls-remote *)",
+      "Bash(git push *)",
+      "Bash(python3 -)",
+      "Bash(docker compose *)",
+      "Bash(docker info *)",
+      "Bash(docker pull *)",
+      "Bash(docker tag *)",
+      "Bash(lsof -nP -iTCP:8080 -sTCP:LISTEN)",
+      "Bash(docker port *)",
+      "Bash(curl -i http://localhost:8080/doc.html)",
+      "Bash(curl -i -X POST http://localhost:8080/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"lover\",\"password\":\"123456\"}')",
+      "Bash(git restore *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}
