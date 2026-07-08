@@ -5,6 +5,7 @@ import com.love.order.entity.User;
 import com.love.order.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -19,10 +20,10 @@ public class UserService {
         );
     }
 
-    /** 根据用户名查找 */
+    /** 根据登录用户名查找 */
     public User getByUsername(String username) {
         return userMapper.selectOne(
-                new LambdaQueryWrapper<User>().eq(User::getNickname, username)
+                new LambdaQueryWrapper<User>().eq(User::getUsername, username)
         );
     }
 
@@ -37,22 +38,47 @@ public class UserService {
         return userMapper.selectById(userId);
     }
 
-    /** 更新用户信息 */
+    /** 更新用户信息：只更新资料字段 */
     public void updateUser(User user) {
-        userMapper.updateById(user);
+        User update = new User();
+        update.setId(user.getId());
+        update.setNickname(blankToNull(user.getNickname()));
+        update.setAvatar(blankToNull(user.getAvatar()));
+        update.setKitchenName(blankToNull(user.getKitchenName()));
+        update.setSignature(blankToNull(user.getSignature()));
+        userMapper.updateById(update);
     }
 
     /** 情侣绑定 */
+    @Transactional
     public void bindPartner(Long userId, Long partnerId) {
-        User user = new User();
-        user.setId(userId);
-        user.setPartnerId(partnerId);
-        userMapper.updateById(user);
+        if (partnerId == null) throw new IllegalArgumentException("请提供对方ID");
+        if (userId.equals(partnerId)) throw new IllegalArgumentException("不能绑定自己哦");
 
-        // 双向绑定
-        User partner = new User();
-        partner.setId(partnerId);
-        partner.setPartnerId(userId);
-        userMapper.updateById(partner);
+        User user = userMapper.selectById(userId);
+        User partner = userMapper.selectById(partnerId);
+        if (user == null) throw new IllegalArgumentException("当前用户不存在");
+        if (partner == null) throw new IllegalArgumentException("对方用户不存在，请检查ID");
+
+        if (user.getPartnerId() != null && !user.getPartnerId().equals(partnerId)) {
+            throw new IllegalArgumentException("你已经绑定了另一半，不能重复绑定");
+        }
+        if (partner.getPartnerId() != null && !partner.getPartnerId().equals(userId)) {
+            throw new IllegalArgumentException("对方已经绑定了另一半");
+        }
+
+        User updateUser = new User();
+        updateUser.setId(userId);
+        updateUser.setPartnerId(partnerId);
+        userMapper.updateById(updateUser);
+
+        User updatePartner = new User();
+        updatePartner.setId(partnerId);
+        updatePartner.setPartnerId(userId);
+        userMapper.updateById(updatePartner);
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

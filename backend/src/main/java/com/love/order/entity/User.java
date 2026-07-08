@@ -14,6 +14,12 @@ public class User {
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
+    /** 登录用户名 */
+    private String username;
+
+    /** SHA-256 密码哈希（MVP 阶段） */
+    private String passwordHash;
+
     /** 微信 openId */
     private String openId;
 

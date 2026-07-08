@@ -1,7 +1,9 @@
 package com.love.order.controller;
 
 import com.love.order.common.R;
+import com.love.order.dto.LoginRequest;
 import com.love.order.service.AuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,22 +18,19 @@ public class AuthController {
 
     /** 账号密码登录 */
     @PostMapping("/login")
-    public R<Map<String, Object>> login(@RequestBody Map<String, String> body) {
-        String username = body.get("username");
-        String password = body.get("password");
-        return R.ok(authService.login(username, password));
+    public R<Map<String, Object>> login(@Valid @RequestBody LoginRequest body) {
+        return R.ok(authService.login(body.getUsername(), body.getPassword()));
     }
 
-    /** 微信小程序登录 */
+    /** 微信小程序登录（MVP 阶段保留占位） */
     @PostMapping("/wxLogin")
     public R<Map<String, Object>> wxLogin(@RequestBody Map<String, String> body) {
-        String code = body.get("code");
-        return R.ok(authService.wxLogin(code));
+        return R.ok(authService.wxLogin(body.get("code")));
     }
 
     /** 刷新 token */
     @PostMapping("/refreshToken")
-    public R<Map<String, Object>> refreshToken(@RequestBody Map<String, String> body) {
+    public R<Map<String, Object>> refreshToken() {
         return R.ok(authService.refreshToken());
     }
 

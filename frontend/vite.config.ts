@@ -80,7 +80,7 @@ export default defineConfig(({ command, mode }) => {
         extensions: ['vue'],
         deep: true, // 是否递归扫描子目录，
         directoryAsNamespace: false, // 是否把目录名作为命名空间前缀，true 时组件名为 目录名+组件名，
-        dts: 'src/types/components.d.ts', // 自动生成的组件类型声明文件路径（用于 TypeScript 支持）
+        dts: false, // 组件声明手写在 src/types/components.d.ts，避免 vue-tsc 检查第三方 .vue 内部类型
         resolvers: [WotResolver()],
       }),
       UniPages({

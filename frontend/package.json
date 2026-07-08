@@ -200,7 +200,8 @@
     "vite-plugin-restart": "^1.0.0",
     "vite-plugin-vue-devtools": "^8.0.5",
     "vitest": "3.2.4",
-    "vue-tsc": "^3.0.6"
+    "vue-tsc": "^3.0.6",
+    "happy-dom": "^18.0.1"
   },
   "pnpm": {
     "overrides": {

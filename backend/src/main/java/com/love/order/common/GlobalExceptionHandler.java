@@ -1,8 +1,8 @@
 package com.love.order.common;
 
 import cn.dev33.satoken.exception.NotLoginException;
-import com.love.order.common.R;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -13,6 +13,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NotLoginException.class)
     public R<?> handleNotLogin(NotLoginException e) {
         return R.fail(401, "请先登录");
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public R<?> handleValidation(MethodArgumentNotValidException e) {
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(error -> error.getDefaultMessage() != null ? error.getDefaultMessage() : "参数不正确")
+                .orElse("参数不正确");
+        return R.fail(400, message);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -17,10 +17,10 @@ export const nativeTabbarList: NativeTabBarItem[] = [
 ]
 
 export const customTabbarList: CustomTabBarItem[] = [
-  { text: '厨房', pagePath: 'pages/index/index', iconType: 'unocss', icon: 'i-carbon-restaurant' },
-  { text: '订单', pagePath: 'pages/order/list', iconType: 'unocss', icon: 'i-carbon-list', badge: '' },
-  { text: '发现', pagePath: 'pages/discover/index', iconType: 'unocss', icon: 'i-carbon-campsite' },
-  { text: '我的', pagePath: 'pages/me/me', iconType: 'unocss', icon: 'i-carbon-user-avatar' },
+  { text: '厨房', pagePath: 'pages/index/index', iconType: 'iconfont', icon: '🍳' },
+  { text: '订单', pagePath: 'pages/order/list', iconType: 'iconfont', icon: '💌' },
+  { text: '发现', pagePath: 'pages/discover/index', iconType: 'iconfont', icon: '🌸' },
+  { text: '我的', pagePath: 'pages/me/me', iconType: 'iconfont', icon: '👩‍🍳' },
 ]
 
 export const tabbarCacheEnable = [TABBAR_STRATEGY_MAP.NATIVE_TABBAR, TABBAR_STRATEGY_MAP.CUSTOM_TABBAR].includes(selectedTabbarStrategy)

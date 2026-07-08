@@ -26,8 +26,11 @@ function getImageByIndex(index: number, item: CustomTabBarItem) {
       <!-- 如：<sar-icon name="image" /> (https://sard.wzt.zone/sard-uniapp-docs/components/icon)(sar没有home图标^_^) -->
       <!-- <wd-icon :name="item.icon" size="20" /> -->
     </template>
-    <template v-if="item.iconType === 'unocss' || item.iconType === 'iconfont'">
+    <template v-if="item.iconType === 'unocss'">
       <view :class="[item.icon, isBulge ? 'text-80px' : 'text-20px']" />
+    </template>
+    <template v-if="item.iconType === 'iconfont'">
+      <view :class="[isBulge ? 'text-40px' : 'text-20px']">{{ item.icon }}</view>
     </template>
     <template v-if="item.iconType === 'image'">
       <image :src="getImageByIndex(index, item)" mode="scaleToFill" :class="isBulge ? 'h-80px w-80px' : 'h-24px w-24px'" />

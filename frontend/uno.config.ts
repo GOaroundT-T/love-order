@@ -1,4 +1,5 @@
 import type { Preset } from 'unocss'
+import carbonIcons from '@iconify-json/carbon/icons.json'
 import { FileSystemIconLoader } from '@iconify/utils/lib/loader/node-loaders'
 
 // https://www.npmjs.com/package/@uni-helper/unocss-preset-uni
@@ -19,12 +20,13 @@ export default defineConfig({
     }),
     presetIcons({
       scale: 1.2,
-      warn: true,
+      warn: false,
       extraProperties: {
         'display': 'inline-block',
         'vertical-align': 'middle',
       },
       collections: {
+        carbon: carbonIcons as any,
         // 注册本地 SVG 图标集合, 从本地文件系统加载图标
         // 在 './src/static/my-icons' 目录下的所有 svg 文件将被注册为图标，
         // my-icons 是图标集合名称，使用 `i-my-icons-图标名` 调用

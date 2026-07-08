@@ -1,46 +1,44 @@
-import type { IUserInfoRes } from '@/api/types/login'
+import type { LoveUser } from '@/types/user'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import {
-  getUserInfo,
-} from '@/api/login'
+import { computed, ref } from 'vue'
+import { getUserInfo } from '@/api/login'
 
-// 初始化状态
-const userInfoState: IUserInfoRes = {
+const userInfoState: LoveUser = {
   userId: -1,
   username: '',
   nickname: '',
   avatar: '/static/images/default-avatar.png',
+  role: 'girlfriend',
+  kitchenName: '我们的厨房',
+  signature: '把每一餐都做成小小的约会 💗',
+  partnerId: null,
 }
 
 export const useUserStore = defineStore(
   'user',
   () => {
-    // 定义用户信息
-    const userInfo = ref<IUserInfoRes>({ ...userInfoState })
-    // 设置用户信息
-    const setUserInfo = (val: IUserInfoRes) => {
-      console.log('设置用户信息', val)
-      // 若头像为空 则使用默认头像
-      if (!val.avatar) {
-        val.avatar = userInfoState.avatar
+    const userInfo = ref<LoveUser>({ ...userInfoState })
+
+    const hasPartner = computed(() => !!userInfo.value.partnerId)
+    const displayName = computed(() => userInfo.value.nickname || userInfo.value.username || '未登录')
+
+    const setUserInfo = (val: LoveUser) => {
+      userInfo.value = {
+        ...userInfoState,
+        ...val,
+        avatar: val.avatar || userInfoState.avatar,
       }
-      userInfo.value = val
     }
+
     const setUserAvatar = (avatar: string) => {
       userInfo.value.avatar = avatar
-      console.log('设置用户头像', avatar)
-      console.log('userInfo', userInfo.value)
     }
-    // 删除用户信息
+
     const clearUserInfo = () => {
       userInfo.value = { ...userInfoState }
       uni.removeStorageSync('user')
     }
 
-    /**
-     * 获取用户信息
-     */
     const fetchUserInfo = async () => {
       const res = await getUserInfo()
       setUserInfo(res)
@@ -49,13 +47,13 @@ export const useUserStore = defineStore(
 
     return {
       userInfo,
+      hasPartner,
+      displayName,
       clearUserInfo,
       fetchUserInfo,
       setUserInfo,
       setUserAvatar,
     }
   },
-  {
-    persist: true,
-  },
+  { persist: true },
 )

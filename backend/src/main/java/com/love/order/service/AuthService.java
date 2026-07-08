@@ -5,7 +5,9 @@ import com.love.order.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 
 @Service
@@ -16,53 +18,35 @@ public class AuthService {
 
     /** 账号密码登录 */
     public Map<String, Object> login(String username, String password) {
-        // 开发阶段：模拟登录，只要密码是 123456 就通过
-        if (password == null || !"123456".equals(password)) {
+        if (username == null || username.isBlank()) throw new IllegalArgumentException("请输入用户名");
+        if (password == null || password.isBlank()) throw new IllegalArgumentException("请输入密码");
+
+        User user = userService.getByUsername(username.trim());
+        if (user == null || user.getPasswordHash() == null) {
+            throw new IllegalArgumentException("用户不存在，请使用初始化脚本里的 demo 账号");
+        }
+        if (!hashPassword(password).equalsIgnoreCase(user.getPasswordHash())) {
             throw new IllegalArgumentException("密码错误");
         }
 
-        User user = userService.getByUsername(username);
-        if (user == null) {
-            // 自动注册
-            user = new User();
-            user.setNickname(username);
-            user.setRole(username.contains("girl") || username.contains("女") ? "girlfriend" : "chef");
-            user.setKitchenName(username + "的厨房");
-            user.setSignature("只做给你一个人的私房菜 💗");
-            user = userService.register(user);
-        }
-
-        StpUtil.login(user.getId());
-        String token = StpUtil.getTokenValue();
-
-        return Map.of(
-                "token", token,
-                "expiresIn", StpUtil.getTokenTimeout()
-        );
+        return buildToken(user.getId());
     }
 
-    /** 微信登录 */
+    /** 微信登录：MVP 阶段仅保留开发占位，正式小程序接入时再换成真实 code2Session */
     public Map<String, Object> wxLogin(String code) {
-        // 开发阶段：模拟微信登录，code 作为 openId
-        String openId = "wx_" + (code != null ? code : "dev");
+        String openId = "wx_" + (code != null && !code.isBlank() ? code : "dev");
         User user = userService.getByOpenId(openId);
         if (user == null) {
             user = new User();
+            user.setUsername(openId);
             user.setOpenId(openId);
             user.setNickname("微信用户");
             user.setRole("girlfriend");
-            user.setKitchenName("我的厨房");
-            user.setSignature("只做给你一个人的私房菜 💗");
+            user.setKitchenName("我们的厨房");
+            user.setSignature("把每一餐都做成小小的约会 💗");
             user = userService.register(user);
         }
-
-        StpUtil.login(user.getId());
-        String token = StpUtil.getTokenValue();
-
-        return Map.of(
-                "token", token,
-                "expiresIn", StpUtil.getTokenTimeout()
-        );
+        return buildToken(user.getId());
     }
 
     /** 退出登录 */
@@ -70,15 +54,29 @@ public class AuthService {
         StpUtil.logout();
     }
 
-    /** 刷新 token */
+    /** 刷新 token：单 token MVP 下重新签发当前登录用户 token */
     public Map<String, Object> refreshToken() {
         long userId = StpUtil.getLoginIdAsLong();
-        StpUtil.login(userId);
-        String token = StpUtil.getTokenValue();
+        return buildToken(userId);
+    }
 
+    private Map<String, Object> buildToken(Long userId) {
+        StpUtil.login(userId);
         return Map.of(
-                "token", token,
+                "token", StpUtil.getTokenValue(),
                 "expiresIn", StpUtil.getTokenTimeout()
         );
+    }
+
+    private String hashPassword(String password) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] encoded = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : encoded) hex.append(String.format("%02x", b));
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("密码算法不可用", e);
+        }
     }
 }

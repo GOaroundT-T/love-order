@@ -1,27 +1,32 @@
 <script lang="ts" setup>
-import type { CartItem, Dish, DishCategory } from '@/types/dish'
+import type { CartItem, Dish, DishCategory, SpicyLevel } from '@/types/dish'
 import { getCategories, getDishes } from '@/api/dish'
 import { createOrder } from '@/api/order'
 import { useCartStore } from '@/store/cart'
+import { useUserStore } from '@/store/user'
+import { useTokenStore } from '@/store/token'
 
 defineOptions({ name: 'Kitchen' })
-definePage({ type: 'home', style: { navigationStyle: 'custom', navigationBarTitleText: '鱼的厨房' } })
+definePage({ type: 'home', style: { navigationStyle: 'custom', navigationBarTitleText: '我们的厨房' } })
 
-// ---------- 数据 ----------
 const categories = ref<DishCategory[]>([])
-const activeCategoryId = ref<number>(0) // 0 = 全部
+const activeCategoryId = ref<number>(0)
 const dishes = ref<Dish[]>([])
 const keyword = ref('')
 const cartStore = useCartStore()
+const userStore = useUserStore()
+const tokenStore = useTokenStore()
 const cartVisible = ref(false)
 const submitting = ref(false)
+const loveNote = ref('今天想吃这些，辛苦我的专属大厨啦 💗')
 
-// ---------- 加载 ----------
+const kitchenName = computed(() => userStore.userInfo.kitchenName || '我们的暖心厨房')
+const signature = computed(() => userStore.userInfo.signature || '只做给你一个人的私房菜 💗')
+const partnerText = computed(() => userStore.hasPartner ? '已绑定另一半' : '还没绑定 TA')
+const todayPick = computed(() => dishes.value.find(d => d.rating >= 5) || dishes.value[0])
+
 async function loadData() {
-  const [catRes, dishRes] = await Promise.all([
-    getCategories(),
-    getDishes(),
-  ])
+  const [catRes, dishRes] = await Promise.all([getCategories(), getDishes()])
   categories.value = catRes || []
   dishes.value = dishRes || []
 }
@@ -35,9 +40,9 @@ async function loadDishes(categoryId?: number) {
   dishes.value = await getDishes(categoryId || undefined, keyword.value || undefined)
 }
 
-// ---------- 购物车 ----------
 function addDish(dish: Dish) {
-  cartStore.addItem({ id: dish.id, name: dish.name, image: dish.image, price: dish.price })
+  if (dish.onShelf === false) return uni.showToast({ title: '这道菜今天休息啦', icon: 'none' })
+  cartStore.addItem({ id: dish.id, name: dish.name, image: dish.image || '', price: dish.price })
 }
 
 function removeCartItem(item: CartItem) {
@@ -45,24 +50,28 @@ function removeCartItem(item: CartItem) {
 }
 
 async function submitOrder() {
+  if (!tokenStore.updateNowTime().hasLogin) {
+    return uni.navigateTo({ url: `/pages/auth/login?redirect=${encodeURIComponent('/pages/index/index')}` })
+  }
   if (cartStore.items.length === 0) return
   submitting.value = true
   try {
     await createOrder({
       items: cartStore.items.map(i => ({ dishId: i.dishId, quantity: i.quantity })),
-      remark: '',
-      loveNote: '💕 想吃这些~~',
+      remark: '情侣私房菜点单',
+      loveNote: loveNote.value,
     })
     cartStore.clearCart()
     cartVisible.value = false
-    uni.showToast({ title: '已下单，等着吃吧~', icon: 'success' })
+    loveNote.value = '今天想吃这些，辛苦我的专属大厨啦 💗'
+    uni.showToast({ title: '爱心点单已送达', icon: 'success' })
+    setTimeout(() => uni.switchTab({ url: '/pages/order/list' }), 700)
   }
   catch { /* 拦截器已 toast */ }
   finally { submitting.value = false }
 }
 
-// ---------- 搜索 ----------
-let searchTimer: any
+let searchTimer: ReturnType<typeof setTimeout>
 function onSearchInput(val: string) {
   clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
@@ -71,166 +80,159 @@ function onSearchInput(val: string) {
   }, 300)
 }
 
-function onManageMenu() {
-  uni.showToast({ title: '管理菜单（开发中）', icon: 'none' })
+function goBindPartner() {
+  if (!tokenStore.updateNowTime().hasLogin) return uni.navigateTo({ url: '/pages/auth/login?redirect=/pages/me/me' })
+  uni.switchTab({ url: '/pages/me/me' })
 }
 
-function onInviteOrder() {
-  uni.showToast({ title: '邀友点菜（开发中）', icon: 'none' })
+function goOrders() {
+  if (!tokenStore.updateNowTime().hasLogin) return uni.navigateTo({ url: '/pages/auth/login?redirect=/pages/order/list' })
+  uni.switchTab({ url: '/pages/order/list' })
 }
 
-// ---------- 评分星星 ----------
 function getStars(rating: number): string {
-  return '★'.repeat(rating) + '☆'.repeat(5 - rating)
+  return '★'.repeat(rating || 0) + '☆'.repeat(Math.max(0, 5 - (rating || 0)))
 }
 
-onLoad(() => { loadData() })
+function spicyText(level?: SpicyLevel) {
+  const map: Record<string, string> = { none: '不辣', mild: '微辣', medium: '中辣', hot: '很辣' }
+  return map[level || 'none'] || '家常味'
+}
+
+onLoad(async () => {
+  if (tokenStore.updateNowTime().hasLogin) userStore.fetchUserInfo().catch(() => {})
+  await loadData()
+})
 </script>
 
 <template>
-  <view class="kitchen-page flex flex-col h-full">
-    <!-- ====== 顶部 banner ====== -->
-    <view class="top-banner warm-gradient px-6 pt-safe flex items-center gap-4" style="padding-top: calc(env(safe-area-inset-top) + 40rpx); padding-bottom: 24rpx;">
-      <view class="flex items-center gap-2">
-        <view class="avatars flex">
-          <view class="avatar-wrap w-12 h-12 rounded-full overflow-hidden border-2 border-white bg-#f0ebe6 center">
-            <text class="text-6">👨‍🍳</text>
-          </view>
-          <view class="avatar-wrap w-12 h-12 rounded-full overflow-hidden border-2 border-white -ml-3 bg-#f0ebe6 center">
-            <text class="text-6">👩</text>
-          </view>
+  <view class="kitchen-page love-page flex flex-col h-full">
+    <view class="top-banner love-hero warm-gradient px-5 pt-safe pb-5" style="padding-top: calc(env(safe-area-inset-top) + 36rpx);">
+      <view class="flex items-center gap-4 relative z-1">
+        <view class="avatar-pair shrink-0">
+          <view class="avatar-pair__item center text-6">👨‍🍳</view>
+          <view class="avatar-pair__item center text-6">👩</view>
+        </view>
+        <view class="flex-1 min-w-0">
+          <view class="love-pill mb-2">💌 {{ partnerText }}</view>
+          <view class="text-5.5 font-800 text-#4a3728 truncate">{{ kitchenName }}</view>
+          <view class="text-3 text-#8b7355 mt-1 truncate">{{ signature }}</view>
+        </view>
+        <view class="bell-btn center" @tap="goOrders">
+          <wd-icon name="bell" size="20px" color="#e85d3a" />
         </view>
       </view>
-      <view class="flex-1 min-w-0">
-        <view class="text-5 font-700 text-#4a3728">鱼的厨房</view>
-        <view class="text-3 text-#a08c7a mt-1">只做给你一个人的私房菜 💗</view>
+      <view v-if="todayPick" class="today-card relative z-1 mt-4" @tap="addDish(todayPick)">
+        <view>
+          <view class="text-2.8 text-#a08c7a">今日想把这道做给你</view>
+          <view class="text-4 font-700 text-#4a3728 mt-1">{{ todayPick.name }}</view>
+        </view>
+        <view class="love-chip">点一份</view>
       </view>
-      <wd-icon name="bell" size="22px" color="#a08c7a" />
     </view>
 
-    <!-- ====== 搜索栏 + 按钮 ====== -->
-    <view class="search-bar px-4 py-3 flex items-center gap-3 bg-white">
-      <view class="flex-1 search-input flex items-center bg-#f5f2ee rounded-xl px-3 h-9">
+    <view class="search-bar px-4 py-3 flex items-center gap-3 bg-#fffaf7">
+      <view class="flex-1 search-input flex items-center bg-white rounded-6 px-3 h-10">
         <wd-icon name="search" size="16px" color="#b8a99a" />
-        <input
-          class="flex-1 ml-2 text-3.5 text-#4a3728 border-none outline-none bg-transparent"
-          placeholder="想吃什么？"
-          placeholder-style="color:#c5b8ad"
-          :value="keyword"
-          @input="($event: any) => onSearchInput($event.detail.value)"
-        />
+        <input class="flex-1 ml-2 text-3.5 text-#4a3728 border-none outline-none bg-transparent" placeholder="今天想被投喂什么？" placeholder-style="color:#c5b8ad" :value="keyword" @input="($event: any) => onSearchInput($event.detail.value)" />
       </view>
-      <view class="flex gap-2 shrink-0">
-        <view class="action-btn text-3 text-#8b7355 bg-#f5f2ee rounded-xl px-3 h-9 flex items-center gap-1" @tap="onInviteOrder">
-          <wd-icon name="user" size="14px" color="#8b7355" />
-          <text>邀友点菜</text>
-        </view>
-        <view class="action-btn text-3 text-#8b7355 bg-#f5f2ee rounded-xl px-3 h-9 flex items-center gap-1" @tap="onManageMenu">
-          <wd-icon name="setting1" size="14px" color="#8b7355" />
-          <text>管理菜单</text>
-        </view>
-      </view>
+      <view class="action-btn love-chip shrink-0" @tap="goBindPartner">情侣绑定</view>
     </view>
 
-    <!-- ====== 左右分栏 ====== -->
     <view class="flex-1 flex overflow-hidden">
-      <!-- 左侧分类 -->
-      <scroll-view scroll-y class="category-side w-40 bg-#faf7f4 shrink-0">
-        <view
-          v-for="cat in [{ id: 0, name: '全部', icon: '🍽️', sort: 0 } as DishCategory, ...categories]"
-          :key="cat.id"
-          class="category-item"
-          :class="{ active: activeCategoryId === cat.id }"
-          @tap="switchCategory(cat.id)"
-        >
-          <text class="text-5 mr-1">{{ cat.icon || '' }}</text>
-          <text class="text-3.5">{{ cat.name }}</text>
+      <scroll-view scroll-y class="category-side w-36 bg-#fff7f1 shrink-0">
+        <view v-for="cat in [{ id: 0, name: '全部', icon: '🍽️' } as DishCategory, ...categories]" :key="cat.id" class="category-item" :class="{ active: activeCategoryId === cat.id }" @tap="switchCategory(cat.id)">
+          <text class="text-5 mb-1">{{ cat.icon || '🍽️' }}</text>
+          <text class="text-3.2">{{ cat.name }}</text>
         </view>
-        <!-- 底部占位 -->
         <view class="h-10" />
       </scroll-view>
 
-      <!-- 右侧菜品列表 -->
-      <scroll-view scroll-y class="dish-list flex-1 px-3" :scroll-into-view="'cat-' + activeCategoryId">
-        <view v-if="dishes.length === 0" class="center pt-20 text-#b8a99a">
-          <view class="text-6 mb-2">🍳</view>
-          <text class="text-3.5">还没有菜品哦</text>
+      <scroll-view scroll-y class="dish-list flex-1 px-3">
+        <view v-if="dishes.length === 0" class="empty-state">
+          <view class="text-8 mb-2">🍳</view>
+          <text class="text-3.5">还没有找到想吃的菜</text>
         </view>
-        <view v-for="dish in dishes" :key="dish.id" class="dish-card card mt-3 p-3 flex">
-          <view v-if="dish.image" class="w-22 h-22 rounded-xl shrink-0 overflow-hidden bg-#f0ebe6">
+        <view v-for="dish in dishes" :key="dish.id" class="dish-card love-card mt-3 p-3 flex" :class="{ 'is-off': dish.onShelf === false }">
+          <view v-if="dish.image" class="w-24 h-24 rounded-5 shrink-0 overflow-hidden bg-#f0ebe6">
             <image :src="dish.image" mode="aspectFill" class="w-full h-full" />
           </view>
-          <view v-else class="w-22 h-22 rounded-xl shrink-0 bg-#fff5f0 center text-9">
-            🍽️
-          </view>
+          <view v-else class="w-24 h-24 rounded-5 shrink-0 bg-#fff5f0 center text-9">🍽️</view>
           <view class="flex-1 ml-3 flex flex-col justify-between min-w-0">
             <view>
-              <view class="text-4 font-600 text-#4a3728 truncate">{{ dish.name }}</view>
-              <view class="text-2.5 text-#a08c7a mt-1 truncate-2">{{ dish.description }}</view>
+              <view class="flex items-center gap-2">
+                <view class="text-4 font-700 text-#4a3728 truncate">{{ dish.name }}</view>
+                <view class="love-chip shrink-0">{{ spicyText(dish.spicyLevel) }}</view>
+              </view>
+              <view class="text-2.8 text-#a08c7a mt-1 truncate-2">{{ dish.description }}</view>
             </view>
             <view class="flex items-center justify-between mt-2">
-              <view class="flex items-center gap-1">
-                <text class="price text-4.5">¥{{ dish.price }}</text>
-                <text class="text-2.5 text-#f0ad4e">{{ getStars(dish.rating) }}</text>
+              <view>
+                <view class="flex items-center gap-1">
+                  <text class="price text-4.5">¥{{ dish.price }}</text>
+                  <text class="text-2.5 text-#f0ad4e">{{ getStars(dish.rating) }}</text>
+                </view>
+                <view class="text-2.5 text-#c59b8a mt-1">想给 TA 做</view>
               </view>
-              <view class="add-btn w-7 h-7 rounded-full bg-#e85d3a flex items-center justify-center" @tap="addDish(dish)">
+              <view class="add-btn w-8 h-8 rounded-full bg-#e85d3a flex items-center justify-center" @tap="addDish(dish)">
                 <wd-icon name="plus" size="18px" color="#fff" />
               </view>
             </view>
           </view>
         </view>
-        <view class="h-30" />
+        <view class="h-32" />
       </scroll-view>
     </view>
 
-    <!-- ====== 底部购物车浮层 ====== -->
     <view class="cart-bar" :class="{ 'has-items': cartStore.totalCount > 0 }" @tap="cartStore.totalCount > 0 ? (cartVisible = true) : null">
       <wd-badge :model-value="cartStore.totalCount" :hidden="cartStore.totalCount === 0">
         <view class="cart-icon-wrap w-12 h-12 rounded-full flex items-center justify-center" :class="cartStore.totalCount > 0 ? 'bg-#e85d3a' : 'bg-#d4ccc5'">
           <wd-icon name="cart" size="24px" :color="cartStore.totalCount > 0 ? '#fff' : '#aaa'" />
         </view>
       </wd-badge>
-      <text v-if="cartStore.totalCount > 0" class="price text-4.5 ml-3">¥{{ cartStore.totalAmount.toFixed(2) }}</text>
-      <text v-else class="text-3.5 text-#bbb ml-3">没有菜品，去点几个吧~</text>
+      <view class="flex-1 ml-3">
+        <text v-if="cartStore.totalCount > 0" class="price text-4.5">¥{{ cartStore.totalAmount.toFixed(2) }}</text>
+        <text v-else class="text-3.5 text-#bbb">还没点菜，挑几道让 TA 做吧~</text>
+      </view>
+      <view v-if="cartStore.totalCount > 0" class="love-chip">去写小纸条</view>
     </view>
 
-    <!-- ====== 购物车弹窗 ====== -->
-    <wd-popup v-model="cartVisible" position="bottom" custom-style="border-radius: 24rpx 24rpx 0 0; max-height: 60vh;">
-      <view class="p-5 pb-safe">
+    <wd-popup v-model="cartVisible" position="bottom" custom-style="border-radius: 32rpx 32rpx 0 0; max-height: 72vh;">
+      <view class="p-5 pb-safe bg-#fffaf7">
         <view class="flex items-center justify-between mb-4">
-          <text class="text-4.5 font-700 text-#4a3728">购物车</text>
+          <view>
+            <text class="text-4.5 font-800 text-#4a3728 block">爱心购物车</text>
+            <text class="text-2.8 text-#a08c7a">把想吃的和想说的都交给 TA</text>
+          </view>
           <wd-icon name="close" size="20px" color="#999" @click="cartVisible = false" />
         </view>
 
-        <scroll-view scroll-y class="cart-list" style="max-height: 40vh;">
+        <scroll-view scroll-y class="cart-list" style="max-height: 34vh;">
           <view v-for="item in cartStore.items" :key="item.dishId" class="flex items-center justify-between py-3 border-b border-#f0ebe6">
             <view class="flex items-center gap-2 flex-1 min-w-0">
-              <view v-if="item.dishImage" class="w-12 h-12 rounded-lg shrink-0 overflow-hidden bg-#f0ebe6">
-                <image :src="item.dishImage" mode="aspectFill" class="w-full h-full" />
-              </view>
-              <view v-else class="w-12 h-12 rounded-lg shrink-0 bg-#fff5f0 center text-7">
-                🍽️
-              </view>
+              <view v-if="item.dishImage" class="w-12 h-12 rounded-lg shrink-0 overflow-hidden bg-#f0ebe6"><image :src="item.dishImage" mode="aspectFill" class="w-full h-full" /></view>
+              <view v-else class="w-12 h-12 rounded-lg shrink-0 bg-#fff5f0 center text-7">🍽️</view>
               <view class="min-w-0 flex-1">
-                <text class="text-3.5 font-500 text-#4a3728 truncate block">{{ item.dishName }}</text>
+                <text class="text-3.5 font-600 text-#4a3728 truncate block">{{ item.dishName }}</text>
                 <text class="price text-3">¥{{ (item.price * item.quantity).toFixed(2) }}</text>
               </view>
             </view>
             <view class="flex items-center gap-2 shrink-0">
-              <view class="w-6 h-6 rounded-full border border-#ddd flex items-center justify-center" @tap="removeCartItem(item)">
-                <wd-icon name="minus" size="14px" color="#999" />
-              </view>
+              <view class="qty-btn border border-#ddd" @tap="removeCartItem(item)"><wd-icon name="minus" size="14px" color="#999" /></view>
               <text class="text-3.5 w-6 text-center">{{ item.quantity }}</text>
-              <view class="w-6 h-6 rounded-full bg-#e85d3a flex items-center justify-center" @tap="addDish({ id: item.dishId, name: item.dishName, image: item.dishImage, price: item.price } as Dish)">
-                <wd-icon name="plus" size="14px" color="#fff" />
-              </view>
+              <view class="qty-btn bg-#e85d3a" @tap="addDish({ id: item.dishId, name: item.dishName, image: item.dishImage, price: item.price, rating: 5 } as Dish)"><wd-icon name="plus" size="14px" color="#fff" /></view>
             </view>
           </view>
         </scroll-view>
 
+        <view class="love-note mt-4">
+          <text class="text-3 font-700 text-#4a3728 block mb-2">给 TA 的小纸条</text>
+          <textarea v-model="loveNote" :maxlength="120" auto-height placeholder="比如：今天想吃热乎乎的，也想你抱抱我" placeholder-style="color:#c9b8aa" />
+        </view>
+
         <view class="mt-4">
-          <wd-button block size="large" type="primary" :loading="submitting" :disabled="cartStore.items.length === 0" @click="submitOrder" custom-style="background: #e85d3a; border-radius: 24rpx; height: 88rpx; font-size: 30rpx;">
-            下单 (¥{{ cartStore.totalAmount.toFixed(2) }})
+          <wd-button block size="large" type="primary" :loading="submitting" :disabled="cartStore.items.length === 0" @click="submitOrder" custom-style="background: #e85d3a; border-radius: 28rpx; height: 92rpx; font-size: 30rpx;">
+            送出爱心点单 (¥{{ cartStore.totalAmount.toFixed(2) }})
           </wd-button>
         </view>
       </view>
@@ -239,81 +241,23 @@ onLoad(() => { loadData() })
 </template>
 
 <style lang="scss" scoped>
-.kitchen-page {
-  height: 100vh;
-  overflow: hidden;
-  background: #fef9f5;
-}
-
-.search-bar {
-  border-bottom: 1rpx solid #f0ebe6;
-}
-
-.category-side {
-  .category-item {
-    padding: 24rpx 20rpx;
-    display: flex;
-    align-items: center;
-    color: #8b7355;
-    font-size: 28rpx;
-    position: relative;
-    transition: all 0.2s;
-
-    &.active {
-      color: #e85d3a;
-      font-weight: 700;
-      background: #fff;
-
-      &::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 6rpx;
-        height: 32rpx;
-        background: #e85d3a;
-        border-radius: 0 4rpx 4rpx 0;
-      }
-    }
-  }
-}
-
-.dish-list {
-  ::-webkit-scrollbar { display: none; }
-}
-
-.dish-card {
-  transition: transform 0.15s;
-  &:active { transform: scale(0.98); }
-}
-
-.add-btn:active {
-  opacity: 0.8;
-}
-
-.cart-bar {
-  display: flex;
-  align-items: center;
-  padding: 16rpx 24rpx;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  background: #fff;
-  border-top: 1rpx solid #f0ebe6;
-
-  &.has-items {
-    box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.06);
-  }
-
-  .cart-icon-wrap {
-    transition: all 0.3s;
-    margin-top: -16rpx;
-  }
-}
-
-.truncate-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+.kitchen-page { height: 100vh; overflow: hidden; }
+.bell-btn { width: 72rpx; height: 72rpx; border-radius: 999rpx; background: rgba(255,255,255,0.72); }
+.today-card { display: flex; align-items: center; justify-content: space-between; padding: 22rpx 24rpx; border-radius: 28rpx; background: rgba(255,255,255,0.72); box-shadow: 0 10rpx 28rpx rgba(126,74,45,.08); }
+.search-bar { border-bottom: 1rpx solid #f0ebe6; }
+.search-input { box-shadow: inset 0 0 0 1rpx #f0ebe6; }
+.category-side .category-item { min-height: 112rpx; padding: 20rpx 12rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8b7355; position: relative; transition: all .2s; }
+.category-side .category-item.active { color: #e85d3a; font-weight: 800; background: #fff; }
+.category-side .category-item.active::before { content: ''; position: absolute; left: 0; top: 26rpx; bottom: 26rpx; width: 6rpx; background: #e85d3a; border-radius: 0 8rpx 8rpx 0; }
+.dish-list ::-webkit-scrollbar { display: none; }
+.dish-card { transition: transform .15s; }
+.dish-card:active { transform: scale(.985); }
+.dish-card.is-off { opacity: .55; }
+.add-btn:active, .action-btn:active { opacity: .82; }
+.cart-bar { display: flex; align-items: center; padding: 16rpx 24rpx; padding-bottom: calc(16rpx + env(safe-area-inset-bottom)); background: rgba(255,255,255,.96); border-top: 1rpx solid #f0ebe6; }
+.cart-bar.has-items { box-shadow: 0 -8rpx 24rpx rgba(126,74,45,.08); }
+.cart-icon-wrap { transition: all .3s; margin-top: -16rpx; }
+.qty-btn { width: 48rpx; height: 48rpx; border-radius: 999rpx; display: flex; align-items: center; justify-content: center; }
+.love-note { padding: 22rpx; border-radius: 24rpx; background: #fff; border: 1rpx solid #f0ebe6; }
+.love-note textarea { width: 100%; min-height: 88rpx; color: #4a3728; font-size: 28rpx; line-height: 1.6; }
 </style>
