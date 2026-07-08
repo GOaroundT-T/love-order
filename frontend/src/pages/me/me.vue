@@ -159,7 +159,7 @@ onShow(() => { loadProfile() })
       </wd-button>
     </view>
 
-    <wd-popup v-model="profileVisible" position="bottom" custom-style="border-radius: 32rpx 32rpx 0 0;">
+    <wd-popup v-model="profileVisible" position="bottom" :z-index="1201" custom-style="border-radius: 32rpx 32rpx 0 0;">
       <view class="popup-panel">
         <view class="text-4.5 font-800 text-#4a3728 mb-4">编辑我们的厨房</view>
         <view class="form-item"><text>昵称</text><input v-model="profileForm.nickname" placeholder="你的昵称" /></view>
@@ -169,7 +169,7 @@ onShow(() => { loadProfile() })
       </view>
     </wd-popup>
 
-    <wd-popup v-model="bindVisible" position="bottom" custom-style="border-radius: 32rpx 32rpx 0 0;">
+    <wd-popup v-model="bindVisible" position="bottom" :z-index="1201" custom-style="border-radius: 32rpx 32rpx 0 0;">
       <view class="popup-panel">
         <view class="text-4.5 font-800 text-#4a3728">绑定另一半</view>
         <view class="text-3 text-#a08c7a mt-2 mb-4">把你的 ID 发给 TA，或输入 TA 的 ID。你的 ID：{{ user.userId }}</view>
@@ -187,7 +187,7 @@ onShow(() => { loadProfile() })
 .cell { display: flex; align-items: center; justify-content: space-between; padding: 32rpx; color: #4a3728; font-size: 28rpx; border-bottom: 1rpx solid #f0ebe6; }
 .cell:last-child { border-bottom: 0; }
 .cell:active { background: #fff7f1; }
-.popup-panel { padding: 40rpx 32rpx calc(40rpx + env(safe-area-inset-bottom)); background: #fffaf7; }
+.popup-panel { padding: 40rpx 32rpx calc(40rpx + 50px + env(safe-area-inset-bottom)); background: #fffaf7; }
 .form-item { margin-bottom: 24rpx; padding: 22rpx; border-radius: 24rpx; background: #fff; border: 1rpx solid #f0ebe6; }
 .form-item text { display: block; color: #a08c7a; font-size: 24rpx; margin-bottom: 12rpx; }
 .form-item input, .form-item textarea { width: 100%; color: #4a3728; font-size: 28rpx; line-height: 1.6; }
