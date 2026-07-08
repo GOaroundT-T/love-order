@@ -139,8 +139,8 @@ onLoad(async () => {
       <view class="action-btn love-chip shrink-0" @tap="goBindPartner">情侣绑定</view>
     </view>
 
-    <view class="flex-1 flex overflow-hidden">
-      <scroll-view scroll-y class="category-side w-36 bg-#fff7f1 shrink-0">
+    <view class="menu-body flex-1 flex overflow-hidden">
+      <scroll-view scroll-y class="category-side bg-#fff7f1 shrink-0">
         <view v-for="cat in [{ id: 0, name: '全部', icon: '🍽️' } as DishCategory, ...categories]" :key="cat.id" class="category-item" :class="{ active: activeCategoryId === cat.id }" @tap="switchCategory(cat.id)">
           <text class="text-5 mb-1">{{ cat.icon || '🍽️' }}</text>
           <text class="text-3.2">{{ cat.name }}</text>
@@ -148,33 +148,33 @@ onLoad(async () => {
         <view class="h-10" />
       </scroll-view>
 
-      <scroll-view scroll-y class="dish-list flex-1 px-3">
+      <scroll-view scroll-y class="dish-list flex-1 min-w-0 px-3">
         <view v-if="dishes.length === 0" class="empty-state">
           <view class="text-8 mb-2">🍳</view>
           <text class="text-3.5">还没有找到想吃的菜</text>
         </view>
         <view v-for="dish in dishes" :key="dish.id" class="dish-card love-card mt-3 p-3 flex" :class="{ 'is-off': dish.onShelf === false }">
-          <view v-if="dish.image" class="w-24 h-24 rounded-5 shrink-0 overflow-hidden bg-#f0ebe6">
+          <view v-if="dish.image" class="dish-thumb overflow-hidden bg-#f0ebe6">
             <image :src="dish.image" mode="aspectFill" class="w-full h-full" />
           </view>
-          <view v-else class="w-24 h-24 rounded-5 shrink-0 bg-#fff5f0 center text-9">🍽️</view>
-          <view class="flex-1 ml-3 flex flex-col justify-between min-w-0">
+          <view v-else class="dish-thumb bg-#fff5f0 center text-8">🍽️</view>
+          <view class="dish-info flex-1 ml-3 flex flex-col justify-between min-w-0">
             <view>
               <view class="flex items-center gap-2">
-                <view class="text-4 font-700 text-#4a3728 truncate">{{ dish.name }}</view>
+                <view class="flex-1 min-w-0 text-4 font-700 text-#4a3728 truncate">{{ dish.name }}</view>
                 <view class="love-chip shrink-0">{{ spicyText(dish.spicyLevel) }}</view>
               </view>
               <view class="text-2.8 text-#a08c7a mt-1 truncate-2">{{ dish.description }}</view>
             </view>
             <view class="flex items-center justify-between mt-2">
-              <view>
-                <view class="flex items-center gap-1">
+              <view class="min-w-0">
+                <view class="dish-meta flex items-center gap-1">
                   <text class="price text-4.5">¥{{ dish.price }}</text>
                   <text class="text-2.5 text-#f0ad4e">{{ getStars(dish.rating) }}</text>
                 </view>
                 <view class="text-2.5 text-#c59b8a mt-1">想给 TA 做</view>
               </view>
-              <view class="add-btn w-8 h-8 rounded-full bg-#e85d3a flex items-center justify-center" @tap="addDish(dish)">
+              <view class="add-btn w-8 h-8 rounded-full bg-#e85d3a flex items-center justify-center shrink-0" @tap="addDish(dish)">
                 <wd-icon name="plus" size="18px" color="#fff" />
               </view>
             </view>
@@ -194,11 +194,11 @@ onLoad(async () => {
         <text v-if="cartStore.totalCount > 0" class="price text-4.5">¥{{ cartStore.totalAmount.toFixed(2) }}</text>
         <text v-else class="text-3.5 text-#bbb">还没点菜，挑几道让 TA 做吧~</text>
       </view>
-      <view v-if="cartStore.totalCount > 0" class="love-chip">去写小纸条</view>
+      <view v-if="cartStore.totalCount > 0" class="cart-action love-chip shrink-0">写纸条并送出</view>
     </view>
 
-    <wd-popup v-model="cartVisible" position="bottom" custom-style="border-radius: 32rpx 32rpx 0 0; max-height: 72vh;">
-      <view class="p-5 pb-safe bg-#fffaf7">
+    <wd-popup v-model="cartVisible" position="bottom" :z-index="1201" custom-style="border-radius: 32rpx 32rpx 0 0; max-height: 76vh;">
+      <view class="cart-popup-panel p-5 bg-#fffaf7">
         <view class="flex items-center justify-between mb-4">
           <view>
             <text class="text-4.5 font-800 text-#4a3728 block">爱心购物车</text>
@@ -230,7 +230,7 @@ onLoad(async () => {
           <textarea v-model="loveNote" :maxlength="120" auto-height placeholder="比如：今天想吃热乎乎的，也想你抱抱我" placeholder-style="color:#c9b8aa" />
         </view>
 
-        <view class="mt-4">
+        <view class="submit-wrap">
           <wd-button block size="large" type="primary" :loading="submitting" :disabled="cartStore.items.length === 0" @click="submitOrder" custom-style="background: #e85d3a; border-radius: 28rpx; height: 92rpx; font-size: 30rpx;">
             送出爱心点单 (¥{{ cartStore.totalAmount.toFixed(2) }})
           </wd-button>
@@ -246,18 +246,27 @@ onLoad(async () => {
 .today-card { display: flex; align-items: center; justify-content: space-between; padding: 22rpx 24rpx; border-radius: 28rpx; background: rgba(255,255,255,0.72); box-shadow: 0 10rpx 28rpx rgba(126,74,45,.08); }
 .search-bar { border-bottom: 1rpx solid #f0ebe6; }
 .search-input { box-shadow: inset 0 0 0 1rpx #f0ebe6; }
-.category-side .category-item { min-height: 112rpx; padding: 20rpx 12rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8b7355; position: relative; transition: all .2s; }
+.menu-body { min-height: 0; }
+.category-side { width: 144rpx; }
+.category-side .category-item { min-height: 104rpx; padding: 18rpx 10rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8b7355; position: relative; transition: all .2s; }
 .category-side .category-item.active { color: #e85d3a; font-weight: 800; background: #fff; }
 .category-side .category-item.active::before { content: ''; position: absolute; left: 0; top: 26rpx; bottom: 26rpx; width: 6rpx; background: #e85d3a; border-radius: 0 8rpx 8rpx 0; }
+.dish-list { width: 0; min-width: 0; box-sizing: border-box; }
 .dish-list ::-webkit-scrollbar { display: none; }
-.dish-card { transition: transform .15s; }
+.dish-card { width: 100%; min-width: 0; overflow: hidden; box-sizing: border-box; transition: transform .15s; }
 .dish-card:active { transform: scale(.985); }
 .dish-card.is-off { opacity: .55; }
+.dish-thumb { width: 128rpx; height: 128rpx; border-radius: 24rpx; flex-shrink: 0; }
+.dish-info { overflow: hidden; }
+.dish-meta { min-width: 0; flex-wrap: wrap; row-gap: 2rpx; }
 .add-btn:active, .action-btn:active { opacity: .82; }
-.cart-bar { display: flex; align-items: center; padding: 16rpx 24rpx; padding-bottom: calc(16rpx + env(safe-area-inset-bottom)); background: rgba(255,255,255,.96); border-top: 1rpx solid #f0ebe6; }
+.cart-bar { position: relative; z-index: 20; flex-shrink: 0; display: flex; align-items: center; padding: 16rpx 24rpx; padding-bottom: calc(16rpx + env(safe-area-inset-bottom)); background: rgba(255,255,255,.96); border-top: 1rpx solid #f0ebe6; }
 .cart-bar.has-items { box-shadow: 0 -8rpx 24rpx rgba(126,74,45,.08); }
 .cart-icon-wrap { transition: all .3s; margin-top: -16rpx; }
+.cart-action { justify-content: center; min-width: 140rpx; }
 .qty-btn { width: 48rpx; height: 48rpx; border-radius: 999rpx; display: flex; align-items: center; justify-content: center; }
+.cart-popup-panel { padding-bottom: calc(40rpx + 50px + env(safe-area-inset-bottom)); }
 .love-note { padding: 22rpx; border-radius: 24rpx; background: #fff; border: 1rpx solid #f0ebe6; }
 .love-note textarea { width: 100%; min-height: 88rpx; color: #4a3728; font-size: 28rpx; line-height: 1.6; }
+.submit-wrap { margin-top: 32rpx; }
 </style>
