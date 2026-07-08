@@ -1,0 +1,49 @@
+/* 情侣私房菜 暖色调全局样式 */
+
+/* ========== wot-ui-v2 主题覆盖 ========== */
+:root {
+  --wot-color-theme: #e85d3a;
+  --wot-color-theme-dark: #d14a28;
+  --wot-color-theme-light: #fef0ec;
+  --wot-color-theme-disabled: #f5c2b0;
+  --wot-color-price: #e85d3a;
+}
+
+page {
+  background-color: #fef9f5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* 滚动区域 */
+.scroll-wrap {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* 安全区底部 */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 卡片 */
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+/* 暖色渐变背景 */
+.warm-gradient {
+  background: linear-gradient(135deg, #fff5f0 0%, #ffe8dd 100%);
+}
+
+/* 价格样式 */
+.price {
+  color: #e85d3a;
+  font-weight: 700;
+}
+
+.price::before {
+  content: '¥';
+  font-size: 24rpx;
+}
