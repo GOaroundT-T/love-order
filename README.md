@@ -63,6 +63,29 @@ frontend/env/.env
 http://localhost:8080
 ```
 
+## 服务器一键部署
+
+如果你买了阿里云/腾讯云服务器，推荐先用一键脚本部署后端 + PostgreSQL：
+
+```bash
+git clone https://github.com/GOaroundT-T/love-order.git
+cd love-order
+bash scripts/deploy-server.sh
+```
+
+脚本会用中文提示并解释每一步，包括：检查 Docker、检查 Docker Compose、提醒默认数据库密码风险、启动 PostgreSQL、构建后端、查看容器状态、查看后端日志、测试公开接口。
+
+常用参数：
+
+```bash
+bash scripts/deploy-server.sh --help      # 查看脚本说明
+bash scripts/deploy-server.sh --yes       # 跳过确认提示
+bash scripts/deploy-server.sh --no-build  # 不重新构建镜像，只启动已有容器
+bash scripts/deploy-server.sh --logs      # 启动后持续查看后端日志
+```
+
+更详细的服务器部署和运维命令解释见 [docs/deployment.md](docs/deployment.md)。
+
 ## 部署教程
 
 详细 Docker/VPS 部署步骤见：

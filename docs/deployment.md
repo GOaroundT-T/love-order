@@ -7,9 +7,187 @@
 
 本教程按 **Docker + VPS** 方式部署后端和数据库，适合阿里云、腾讯云、华为云、轻量服务器等 Linux 机器。
 
-## 1. 本地开发启动
+## 1. 推荐：一键部署脚本
 
-### 1.1 准备环境
+如果你刚买了一台云服务器，最推荐的方式是使用项目自带脚本：
+
+```bash
+git clone https://github.com/GOaroundT-T/love-order.git
+cd love-order
+bash scripts/deploy-server.sh
+```
+
+这个脚本部署的是：
+
+- PostgreSQL 数据库容器
+- Spring Boot 后端容器
+
+它暂时不部署前端 H5/小程序。前端仍然需要单独构建后上传到 Nginx、对象存储、宝塔静态网站或微信开发者工具。
+
+### 1.1 脚本会自动做什么
+
+脚本路径：
+
+```text
+scripts/deploy-server.sh
+```
+
+脚本会依次执行：
+
+1. 检查 `docker-compose.yml` 和 `backend/Dockerfile` 是否存在。
+2. 检查 Docker 是否安装。
+3. 检查 Docker daemon 是否启动。
+4. 检查 `docker compose` 是否可用。
+5. 检查生产配置风险，例如默认数据库密码、占位域名、PostgreSQL 端口暴露。
+6. 执行 `docker compose up -d --build`。
+7. 执行 `docker compose ps` 查看容器状态。
+8. 执行 `docker compose logs --tail=80 backend` 查看后端最近日志。
+9. 尝试访问 `http://127.0.0.1:8080/dish/categories`，确认后端和数据库能正常工作。
+
+### 1.2 常用参数
+
+```bash
+bash scripts/deploy-server.sh --help
+```
+
+查看帮助说明。
+
+```bash
+bash scripts/deploy-server.sh --yes
+```
+
+跳过确认提示。适合你已经检查过 `docker-compose.yml` 的数据库密码和域名配置时使用。
+
+```bash
+bash scripts/deploy-server.sh --no-build
+```
+
+不重新构建后端镜像，只启动已有容器。适合你只是重启服务时使用。
+
+```bash
+bash scripts/deploy-server.sh --logs
+```
+
+部署完成后持续查看后端日志。按 `Ctrl+C` 可以退出日志查看，不会停止容器。
+
+### 1.3 每个核心命令是什么意思
+
+```bash
+docker --version
+```
+
+查看 Docker 是否安装。
+
+```bash
+docker info
+```
+
+检查 Docker 后台服务是否正在运行。Mac/Windows 需要打开 Docker Desktop；Linux 服务器需要启动 Docker 服务。
+
+```bash
+docker compose version
+```
+
+检查 Docker Compose 插件是否可用。本项目用 Docker Compose 同时管理数据库和后端。
+
+```bash
+docker compose up -d --build
+```
+
+这是最核心的一键启动命令：
+
+- `up`：按 `docker-compose.yml` 启动服务。
+- `-d`：后台运行，关闭终端后服务仍然继续运行。
+- `--build`：启动前重新构建后端镜像。
+
+```bash
+docker compose ps
+```
+
+查看容器运行状态。你应该看到：
+
+- `love-order-postgres` 是 `healthy`
+- `love-order-backend` 是 `Up`
+
+```bash
+docker compose logs -f backend
+```
+
+持续查看后端日志。排查后端启动失败、数据库连接失败时最常用。
+
+```bash
+docker compose down
+```
+
+停止并移除容器，但不会删除数据库数据卷。
+
+```bash
+docker compose down -v
+```
+
+停止并删除容器，同时删除数据库数据卷。**这个命令会清空数据库，生产环境不要随便执行。**
+
+### 1.4 如果服务器没有 Docker
+
+Ubuntu 服务器可以执行：
+
+```bash
+sudo apt update
+sudo apt install -y docker.io docker-compose-plugin
+sudo systemctl enable docker
+sudo systemctl start docker
+```
+
+含义：
+
+- `sudo apt update`：更新软件源索引。
+- `sudo apt install -y docker.io docker-compose-plugin`：安装 Docker 和 Compose 插件。
+- `sudo systemctl enable docker`：设置 Docker 开机自启。
+- `sudo systemctl start docker`：立即启动 Docker 服务。
+
+如果当前用户不是 root，可能还需要：
+
+```bash
+sudo usermod -aG docker $USER
+```
+
+含义：把当前用户加入 docker 用户组，这样以后可以不加 `sudo` 执行 Docker。执行后需要退出 SSH 再重新登录。
+
+### 1.5 如果国内拉镜像很慢
+
+项目已经做了基础优化：
+
+- `docker-compose.yml` 的 PostgreSQL 镜像使用国内镜像地址。
+- `backend/Dockerfile` 的 Maven 构建使用阿里云 Maven 镜像。
+
+如果仍然慢，可以给服务器 Docker 配置镜像加速。常见文件：
+
+```text
+/etc/docker/daemon.json
+```
+
+示例：
+
+```json
+{
+  "registry-mirrors": [
+    "https://docker.m.daocloud.io"
+  ]
+}
+```
+
+修改后重启 Docker：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+```
+
+---
+
+## 2. 本地开发启动
+
+### 2.1 准备环境
 
 建议版本：
 
@@ -20,7 +198,7 @@
 - PostgreSQL 14+
 - Docker / Docker Compose（部署时需要）
 
-### 1.2 启动数据库
+### 2.2 启动数据库
 
 如果你本地有 PostgreSQL：
 
@@ -48,7 +226,7 @@ backend/src/main/resources/db/init.sql
 | `lover` | `123456` | 点餐方 |
 | `chef` | `123456` | 做饭方 |
 
-### 1.3 启动后端
+### 2.3 启动后端
 
 ```bash
 cd backend
@@ -67,7 +245,7 @@ http://localhost:8080
 http://localhost:8080/doc.html
 ```
 
-### 1.4 启动前端
+### 2.4 启动前端
 
 ```bash
 cd frontend
@@ -87,9 +265,9 @@ frontend/env/.env
 VITE_SERVER_BASEURL = 'http://localhost:8080'
 ```
 
-## 2. VPS 上部署后端和数据库
+## 3. VPS 上部署后端和数据库
 
-### 2.1 安装 Docker
+### 3.1 安装 Docker
 
 Ubuntu 示例：
 
@@ -107,7 +285,7 @@ docker --version
 docker compose version
 ```
 
-### 2.2 上传代码
+### 3.2 上传代码
 
 可以用 Git 拉取：
 
@@ -118,7 +296,7 @@ cd love-order
 
 如果服务器还没配置 GitHub SSH，也可以先用 HTTPS 或者直接上传压缩包。
 
-### 2.3 修改生产配置
+### 3.3 修改生产配置
 
 打开根目录的 `docker-compose.yml`，重点修改：
 
@@ -134,7 +312,7 @@ APP_CORS_ALLOWED_ORIGINS: https://your-domain.com
 - 把 `APP_CORS_ALLOWED_ORIGINS` 改成你的前端域名。
 - 如果暂时没有域名，可以先填 `http://服务器IP:9000` 或你的 H5 访问地址。
 
-### 2.4 国内网络镜像源说明
+### 3.4 国内网络镜像源说明
 
 如果你在国内网络，直接拉 Docker Hub / Maven Central 可能会非常慢。项目已经做了两处优化：
 
@@ -170,7 +348,7 @@ sudo systemctl daemon-reload
 sudo systemctl restart docker
 ```
 
-### 2.5 启动服务
+### 3.5 启动服务
 
 ```bash
 docker compose up -d --build
@@ -194,7 +372,7 @@ docker compose logs -f backend
 http://服务器IP:8080
 ```
 
-### 2.6 放行端口
+### 3.6 放行端口
 
 云服务器安全组和系统防火墙都要放行：
 
@@ -210,9 +388,9 @@ sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 ```
 
-## 3. 前端部署
+## 4. 前端部署
 
-### 3.1 H5 构建
+### 4.1 H5 构建
 
 修改 `frontend/env/.env.production`，如果没有这个文件就新建：
 
@@ -237,7 +415,7 @@ frontend/dist/build/h5
 
 可以把这个目录上传到 Nginx、宝塔静态网站、对象存储或 CDN。
 
-### 3.2 微信小程序构建
+### 4.2 微信小程序构建
 
 ```bash
 cd frontend
@@ -252,7 +430,7 @@ pnpm build:mp-weixin
 - 微信公众平台后台需要配置 request 合法域名。
 - WebSocket 也需要配置 socket 合法域名。
 
-## 4. 常见问题
+## 5. 常见问题
 
 ### 前端提示网络错误
 
@@ -296,7 +474,7 @@ docker compose up -d postgres
 3. 前端 `VITE_SERVER_BASEURL` 是否能转换为正确 WebSocket 地址。
 4. 如果是 HTTPS，WebSocket 应该走 `wss://`。
 
-## 5. 推荐上线架构
+## 6. 推荐上线架构
 
 简单 VPS 架构：
 
